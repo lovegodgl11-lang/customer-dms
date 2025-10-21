@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class=""><head><script>window.livecodes = window.livecodes || {};</script><title>Untitled Project</title><meta name="title" content="Untitled Project"><meta charset="UTF-8">
+<html lang="en" class=""><head><script>window.livecodes = window.livecodes || {};</script><title>Customer </title><meta name="title" content="Customer "><meta name="description" content="Update ui"><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="./style.css"><script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js" async=""></script><script type="importmap">{
   "imports": {}
 }</script></head><body>
@@ -232,7 +232,7 @@
       .discount-badge {
         position: absolute;
         top: 1rem;
-        left: 1rem;
+        right: 1rem;
         background-color: var(--danger-color);
         color: white;
         padding: 0.25rem 0.6rem;
@@ -476,6 +476,64 @@
         color: #666;
       }
       
+      /* History Tabs */
+      .history-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+      }
+      
+      .history-tab {
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        font-weight: 500;
+        border-bottom: 3px solid transparent;
+      }
+      
+      .history-tab.active {
+        border-bottom: 3px solid var(--primary-color);
+        color: var(--primary-color);
+      }
+      
+      .history-content {
+        display: none;
+      }
+      
+      .history-content.active {
+        display: block;
+      }
+      
+      .history-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .history-item:last-child {
+        border-bottom: none;
+      }
+      
+      .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+      }
+      
+      .history-item-title {
+        font-weight: 600;
+      }
+      
+      .history-item-date {
+        color: var(--text-light);
+        font-size: 0.875rem;
+      }
+      
+      .history-item-details {
+        display: flex;
+        justify-content: space-between;
+        color: var(--text-light);
+        font-size: 0.875rem;
+      }
+      
       @media (min-width: 768px) {
         .mobile-cart-popup {
           display: none;
@@ -560,7 +618,46 @@
                     </div>
                 </div>
             </header>
-            <main class="container"> <h2 class="page-title">Available Surplus Stock</h2> <div id="product-grid-container"></div> </main>
+            <main class="container"> 
+                <h2 class="page-title">Available Surplus Stock</h2> 
+                <div id="product-grid-container"></div> 
+            </main>
+        </div>
+        
+        <div id="history-page" class="page">
+            <header class="app-header">
+                <div class="header-content">
+                    <h1 class="logo">Dump Money <a href="https://lovegodgl11-lang.github.io/startup-page-dms/" class="link" style="font-size: 0.9rem; font-weight: 500;" target="_top">(home)</a></h1>
+                    <div class="search-bar"> <input id="search-input-history" type="text" placeholder="Search orders or payments..."> </div>
+                    <div class="header-actions">
+                        <div class="wallet-info">Wallet: ₹<span id="wallet-balance-history">0.00</span></div>
+                        <button id="topup-wallet-btn-history" class="btn btn-secondary">Top-up</button>
+                        <button id="scan-and-go-btn-history" class="btn btn-primary">📷&nbsp;Scan &amp; Go</button>
+                        <div style="position: relative;">
+                            <button class="notification-button" id="notification-btn-history">🔔 <span id="notification-badge-history" class="badge" style="display: none;">0</span> </button>
+                            <div class="notification-dropdown" id="notification-dropdown-history">
+                                <div class="notification-header">Notifications</div>
+                                <div id="notification-list-history" class="notification-list"></div>
+                            </div>
+                        </div>
+                        <button class="cart-button" id="open-cart-button-history"> 🛒 <span id="cart-badge-history" class="badge" style="display: none;">0</span> </button>
+                        <button id="customer-logout-button-history" class="btn" style="background-color: #6b7280; color: white;">Logout</button>
+                    </div>
+                </div>
+            </header>
+            <main class="container">
+                <h2 class="page-title">Order &amp; Payment History</h2>
+                <div class="history-tabs">
+                    <div class="history-tab active" data-tab="orders">Orders</div>
+                    <div class="history-tab" data-tab="payments">Payments</div>
+                </div>
+                <div id="orders-content" class="history-content active">
+                    <div id="orders-list"></div>
+                </div>
+                <div id="payments-content" class="history-content">
+                    <div id="payments-list"></div>
+                </div>
+            </main>
         </div>
         
         <div id="cart-modal" class="modal-overlay">
@@ -741,6 +838,8 @@
         let customerUnsubscribe = null;
         let notificationUnsubscribe = null;
         let shopsMap = new Map();
+        let orders = [];
+        let payments = [];
 
         const pages = document.querySelectorAll('.page');
         const showPage = (pageId) => pages.forEach(p => p.classList.toggle('active', p.id === pageId));
@@ -761,6 +860,11 @@
         const mobileCartPopup = document.getElementById('mobile-cart-popup');
         const cartOverlay = document.querySelector('.cart-overlay');
         const billReceiptModal = document.getElementById('bill-receipt-modal');
+
+        // History page elements
+        const ordersList = document.getElementById('orders-list');
+        const paymentsList = document.getElementById('payments-list');
+        const historyTabs = document.querySelectorAll('.history-tab');
 
         const handleFoundProduct = (productId) => {
             const product = products.find(p => p.id === productId);
@@ -840,6 +944,7 @@
                 if (docSnap.exists()) {
                     currentUser = { id: docSnap.id, ...docSnap.data() };
                     walletBalanceEl.textContent = (currentUser.wallet || 0).toFixed(2);
+                    document.getElementById('wallet-balance-history').textContent = (currentUser.wallet || 0).toFixed(2);
                 } else {
                     handleLogout(); // Customer doc deleted
                 }
@@ -859,6 +964,7 @@
 
             currentUser = userData;
             walletBalanceEl.textContent = (currentUser.wallet || 0).toFixed(2);
+            document.getElementById('wallet-balance-history').textContent = (currentUser.wallet || 0).toFixed(2);
             showPage('customer-app-page');
             if (products.length === 0) fetchProducts();
         };
@@ -1332,6 +1438,7 @@
         const closeTopupModal = () => topupModal.classList.remove('active');
         
         document.getElementById('topup-wallet-btn').addEventListener('click', openTopupModal);
+        document.getElementById('topup-wallet-btn-history').addEventListener('click', openTopupModal);
         document.getElementById('close-topup-modal').addEventListener('click', closeTopupModal);
         document.getElementById('cancel-topup-btn').addEventListener('click', closeTopupModal);
 
@@ -1488,8 +1595,22 @@
             }
         });
 
+        document.getElementById('notification-btn-history').addEventListener('click', async () => {
+            const dropdown = document.getElementById('notification-dropdown-history');
+            dropdown.classList.toggle('active');
+
+            if (dropdown.classList.contains('active')) {
+                const q = query(collection(db, 'notifications'), where('customerId', '==', currentUser.id), where('read', '==', false));
+                const snapshot = await getDocs(q);
+                snapshot.forEach(docSnap => {
+                    updateDoc(doc(db, 'notifications', docSnap.id), { read: true });
+                });
+            }
+        });
+
         // Event Listeners for new elements
         document.getElementById('scan-and-go-btn').addEventListener('click', startScanner);
+        document.getElementById('scan-and-go-btn-history').addEventListener('click', startScanner);
         document.getElementById('close-scan-modal').addEventListener('click', () => {
             if (html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().catch(err => {});
@@ -1551,6 +1672,12 @@
             cartOverlay.classList.add('active');
         });
         
+        document.getElementById('open-cart-button-history').addEventListener('click', () => {
+            updateMobileCartUI();
+            mobileCartPopup.classList.add('active');
+            cartOverlay.classList.add('active');
+        });
+        
         document.querySelector('.close-cart-btn').addEventListener('click', () => {
             mobileCartPopup.classList.remove('active');
             cartOverlay.classList.remove('active');
@@ -1595,8 +1722,25 @@
             });
             renderProducts(filtered);
         });
+        
+        document.getElementById('search-input-history').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            // Filter orders and payments
+            const filteredOrders = orders.filter(order => 
+                order.id.toLowerCase().includes(searchTerm) ||
+                order.items.some(item => item.name.toLowerCase().includes(searchTerm))
+            );
+            const filteredPayments = payments.filter(payment => 
+                payment.id.toLowerCase().includes(searchTerm) ||
+                payment.amount.toString().includes(searchTerm)
+            );
+            renderOrders(filteredOrders);
+            renderPayments(filteredPayments);
+        });
+        
         productGridContainer.addEventListener('click', (e) => { if (e.target.matches('.btn-add-to-cart')) { addToCart(e.target.dataset.productId); } });
         document.getElementById('open-cart-button').addEventListener('click', () => { renderCartModal(); cartModal.classList.add('active'); });
+        document.getElementById('open-cart-button-history').addEventListener('click', () => { renderCartModal(); cartModal.classList.add('active'); });
         document.getElementById('close-cart-button').addEventListener('click', () => cartModal.classList.remove('active'));
         cartModal.addEventListener('click', (e) => { if (e.target === cartModal) cartModal.classList.remove('active'); });
         document.getElementById('cart-items-container').addEventListener('click', (e) => {
@@ -1613,6 +1757,7 @@
         });
         document.getElementById('cart-summary-container').addEventListener('click', (e) => { if (e.target.id === 'checkout-button') openDeliveryModal(); });
         document.getElementById('customer-logout-button').addEventListener('click', handleLogout);
+        document.getElementById('customer-logout-button-history').addEventListener('click', handleLogout);
         
         const authForm = document.getElementById('auth-form'); 
         const authToggleLink = document.getElementById('auth-toggle-link'); 
@@ -1685,6 +1830,95 @@
             }
         });
 
+        // History page functionality
+        const renderOrders = (ordersToRender) => {
+            ordersList.innerHTML = '';
+            if (!ordersToRender || ordersToRender.length === 0) {
+                ordersList.innerHTML = '<p style="text-align: center; padding: 1rem;">No orders found.</p>';
+                return;
+            }
+
+            ordersToRender.forEach(order => {
+                const orderEl = document.createElement('div');
+                orderEl.className = 'history-item';
+                orderEl.innerHTML = `
+                    <div class="history-item-header">
+                        <div class="history-item-title">Order #${order.id}</div>
+                        <div class="history-item-date">${order.createdAt?.toDate().toLocaleDateString()}</div>
+                    </div>
+                    <div class="history-item-details">
+                        <div>Items: ${order.items.length}</div>
+                        <div>Total: ₹${order.total.toFixed(2)}</div>
+                    </div>
+                `;
+                ordersList.appendChild(orderEl);
+            });
+        };
+
+        const renderPayments = (paymentsToRender) => {
+            paymentsList.innerHTML = '';
+            if (!paymentsToRender || paymentsToRender.length === 0) {
+                paymentsList.innerHTML = '<p style="text-align: center; padding: 1rem;">No payments found.</p>';
+                return;
+            }
+
+            paymentsToRender.forEach(payment => {
+                const paymentEl = document.createElement('div');
+                paymentEl.className = 'history-item';
+                paymentEl.innerHTML = `
+                    <div class="history-item-header">
+                        <div class="history-item-title">Payment #${payment.id}</div>
+                        <div class="history-item-date">${payment.createdAt?.toDate().toLocaleDateString()}</div>
+                    </div>
+                    <div class="history-item-details">
+                        <div>Amount: ₹${payment.amount.toFixed(2)}</div>
+                        <div>Status: ${payment.status}</div>
+                    </div>
+                `;
+                paymentsList.appendChild(paymentEl);
+            });
+        };
+
+        // History tab switching
+        historyTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                historyTabs.forEach(t => t.classList.remove('active'));
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Hide all content sections
+                document.querySelectorAll('.history-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Show the corresponding content
+                const tabName = tab.dataset.tab;
+                document.getElementById(`${tabName}-content`).classList.add('active');
+            });
+        });
+
+        // Fetch orders and payments for history page
+        const fetchHistoryData = async () => {
+            if (!currentUser) return;
+            
+            try {
+                // Fetch orders
+                const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', currentUser.id));
+                const ordersSnapshot = await getDocs(ordersQuery);
+                orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderOrders(orders);
+                
+                // Fetch payments
+                const paymentsQuery = query(collection(db, 'topupRequests'), where('customerId', '==', currentUser.id));
+                const paymentsSnapshot = await getDocs(paymentsQuery);
+                payments = paymentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderPayments(payments);
+            } catch (error) {
+                console.error("Error fetching history data:", error);
+            }
+        };
+
         const checkAuth = async () => {
             // Set a timeout to prevent getting stuck on the loading page if the database connection fails or is slow.
             const authTimeout = setTimeout(() => {
@@ -1711,8 +1945,25 @@
                 clearTimeout(authTimeout);
             }
         };
-        
+
+        // Initialize the app
         checkAuth();
+
+        // Add event listener for history page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Show history page when needed
+            document.getElementById('customer-logout-button').addEventListener('click', () => {
+                // Show history page when logging out
+                showPage('history-page');
+                fetchHistoryData();
+            });
+            
+            document.getElementById('customer-logout-button-history').addEventListener('click', () => {
+                // Show history page when logging out
+                showPage('history-page');
+                fetchHistoryData();
+            });
+        });
 
     </script>
   
